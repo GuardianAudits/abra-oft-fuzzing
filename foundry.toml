@@ -60,6 +60,7 @@ include_push_bytes = true
 runs = 50
 depth = 100
 fail_on_revert = true
+show_metrics = true
 
 [soldeer]
 remappings_generate = false

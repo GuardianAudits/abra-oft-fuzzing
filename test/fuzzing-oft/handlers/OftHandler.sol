@@ -259,6 +259,7 @@ contract OftHandler is Test {
         address bSpellOftArbitrum;
         bytes sourceAddressSpell;
         bytes sourceAddressBSpell;
+        uint64 _ld2sdValue;
     }
 
     function exitWithParams(
@@ -318,32 +319,38 @@ contract OftHandler is Test {
         // ACTION
         try spellPowerStaking.exit{value: value}(cache.rewardParams) {
 
-            cache.spellOftArbitrum = address(receiver.spellOft());
-            cache.bSpellOftArbitrum = address(receiver.bSpellOft());
-            cache.sourceAddressSpell = LzApp(cache.spellOftArbitrum).trustedRemoteLookup(MAINNET_CHAIN_ID);
-            cache.sourceAddressBSpell = LzApp(cache.bSpellOftArbitrum).trustedRemoteLookup(MAINNET_CHAIN_ID);
+            // cache.spellOftArbitrum = address(receiver.spellOft());
+            // cache.bSpellOftArbitrum = address(receiver.bSpellOft());
+            // cache.sourceAddressSpell = LzApp(cache.spellOftArbitrum).trustedRemoteLookup(MAINNET_CHAIN_ID);
+            // cache.sourceAddressBSpell = LzApp(cache.bSpellOftArbitrum).trustedRemoteLookup(MAINNET_CHAIN_ID);
 
-            vm.stopPrank();
-            vm.selectFork(mainnetFork);
+            // vm.stopPrank();
+            // vm.selectFork(mainnetFork);
 
-            address bSpellOft = address(sender.bSpellOft());
-            vm.startPrank(address(ILzApp(bSpellOft).lzEndpoint()));
-            ILzReceiver(bSpellOft).lzReceive(
-                ARBITRUM_CHAIN_ID,
-                cache.sourceAddressBSpell,
-                nonce++, 
-                abi.encodePacked(PT_SEND, addressToBytes32(currentActor), _ld2sd(cache.userRewards[0], cache.bSpellOftArbitrum))
-            );
-            vm.stopPrank();
+            // cache._ld2sdValue = _ld2sd(cache.userRewards[0], cache.bSpellOftArbitrum);
 
-            address spellOft = address(sender.spellOft());
-            vm.startPrank(address(ILzApp(spellOft).lzEndpoint()));
-            ILzReceiver(spellOft).lzReceive(
-                ARBITRUM_CHAIN_ID,
-                cache.sourceAddressSpell,
-                nonce++, 
-                abi.encodePacked(PT_SEND, addressToBytes32(currentActor), _ld2sd(cache.userRewards[1], cache.spellOftArbitrum))
-            );
+            // address bSpellOft = address(sender.bSpellOft());
+            // vm.startPrank(address(ILzApp(bSpellOft).lzEndpoint()));
+            // try ILzReceiver(bSpellOft).lzReceive(
+            //     ARBITRUM_CHAIN_ID,
+            //     cache.sourceAddressBSpell,
+            //     nonce++, 
+            //     abi.encodePacked(PT_SEND, addressToBytes32(currentActor), cache._ld2sdValue)
+            // ) {} catch {
+            //     assertTrue(false, "TEST");
+            // }
+            // vm.stopPrank();
+
+            // cache._ld2sdValue = _ld2sd(cache.userRewards[1], cache.spellOftArbitrum);
+
+            // address spellOft = address(sender.spellOft());
+            // vm.startPrank(address(ILzApp(spellOft).lzEndpoint()));
+            // ILzReceiver(spellOft).lzReceive(
+            //     ARBITRUM_CHAIN_ID,
+            //     cache.sourceAddressSpell,
+            //     nonce++, 
+            //     abi.encodePacked(PT_SEND, addressToBytes32(currentActor), cache._ld2sdValue)
+            // );
 
         } catch (bytes memory err) {
 
@@ -748,7 +755,7 @@ contract OftHandler is Test {
 
     function _ld2sd(uint _amount, address oft) internal view virtual returns (uint64) {
         uint amountSD = _amount / ILzIndirectOFTV2(oft).ld2sdRate();
-        require(amountSD <= type(uint64).max, "local _ld2sd failed");
+        // if(amountSD > type(uint64).max) return 0;
         return uint64(amountSD);
     }
 

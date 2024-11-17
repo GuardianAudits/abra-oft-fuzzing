@@ -146,8 +146,8 @@ contract OftInvariant is StdInvariant, BaseTest {
     //     assertEq(address(receiver.boundSpellLocker()), address(boundSpellLocker), "boundSpellLocker is not correct on Arbitrum");
     // }
 
-    function invariantSetup() external pure {
-        assertTrue(true, "TEST");
+    function invariant_LOCK_01() public useCurrentTimestamp {
+        assertTrue(boundSpellLocker.remainingEpochTime() != 0, "LOCK-01: TockenLocker.remainingEpochTime() should never return 0");
     }
 
     function _deployCrosschain() internal {

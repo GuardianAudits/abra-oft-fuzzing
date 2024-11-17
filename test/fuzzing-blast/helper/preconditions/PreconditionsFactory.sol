@@ -32,9 +32,9 @@ abstract contract PreconditionsFactory is PreconditionsBase {
             quoteToken = address(tokens[(quoteToken_ + 1) % tokens.length]);
         }
         
-        lpFeeRate_ = clampBetween(lpFeeRate_, MIN_LP_FEE_RATE, MAX_LP_FEE_RATE);
-        i_ = clampBetween(i_, MIN_I, MAX_I);
-        k_ = clampBetween(k_, 0, MAX_K);
+        lpFeeRate_ = fl.clamp(lpFeeRate_, MIN_LP_FEE_RATE, MAX_LP_FEE_RATE);
+        i_ = fl.clamp(i_, MIN_I, MAX_I);
+        k_ = fl.clamp(k_, 0, MAX_K);
 
         return CreateParams(baseToken, quoteToken, lpFeeRate_, i_, k_);
     }

@@ -151,8 +151,8 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        baseInAmount = clampBetween(baseInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
-        quoteInAmount = clampBetween(quoteInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
+        baseInAmount = fl.clamp(baseInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+        quoteInAmount = fl.clamp(quoteInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
 
         return AddLiquidityParams(lpAddr, baseInAmount, quoteInAmount, minimumShares);
     }
@@ -168,12 +168,12 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         address quoteToken = availablePools[address(weth)][lp % availablePools[address(weth)].length];
         address lpAddr = pools[address(weth)][quoteToken];
 
-        value = clampBetween(value, 0, currentActor.balance);
+        value = fl.clamp(value, 0, currentActor.balance);
 
         if (MagicLP(lpAddr)._BASE_TOKEN_() == address(weth)) {
-            tokenInAmount = clampBetween(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
+            tokenInAmount = fl.clamp(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
         } else {
-            tokenInAmount = clampBetween(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+            tokenInAmount = fl.clamp(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
         }
 
         return AddLiquidityETHParams(lpAddr, tokenInAmount, value, minimumShares);
@@ -190,12 +190,12 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         address quoteToken = availablePools[address(weth)][lp % availablePools[address(weth)].length];
         address lpAddr = pools[address(weth)][quoteToken];
 
-        value = clampBetween(value, 0, currentActor.balance);
+        value = fl.clamp(value, 0, currentActor.balance);
 
         if (MagicLP(lpAddr)._BASE_TOKEN_() == address(weth)) {
-            tokenInAmount = clampBetween(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
+            tokenInAmount = fl.clamp(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
         } else {
-            tokenInAmount = clampBetween(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+            tokenInAmount = fl.clamp(tokenInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
         }
 
         return AddLiquidityETHUnsafeParams(lpAddr, tokenInAmount, value, minimumShares);
@@ -211,8 +211,8 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        baseInAmount = clampBetween(baseInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
-        quoteInAmount = clampBetween(quoteInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
+        baseInAmount = fl.clamp(baseInAmount, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+        quoteInAmount = fl.clamp(quoteInAmount, 0, IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
 
         return AddLiquidityUnsafeParams(lpAddr, baseInAmount, quoteInAmount, minimumShares);
     }
@@ -234,9 +234,9 @@ abstract contract PreconditionsRouter is PreconditionsBase {
             quoteTokenAddr = address(tokens[(quoteToken + 1) % tokens.length]);
         }
 
-        lpFeeRate = clampBetween(lpFeeRate, MIN_LP_FEE_RATE, MAX_LP_FEE_RATE);
-        i = clampBetween(i, MIN_I, MAX_I);
-        k = clampBetween(k, 0, MAX_K);
+        lpFeeRate = fl.clamp(lpFeeRate, MIN_LP_FEE_RATE, MAX_LP_FEE_RATE);
+        i = fl.clamp(i, MIN_I, MAX_I);
+        k = fl.clamp(k, 0, MAX_K);
 
         return CreatePoolParams(baseTokenAddr, quoteTokenAddr, lpFeeRate, i, k, currentActor, baseInAmount, quoteInAmount);
     }
@@ -256,11 +256,11 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         if (tokenAddr == address(weth)) {
             tokenAddr = address(tokens[(token + 1) % tokens.length]);
         }
-        lpFeeRate = clampBetween(lpFeeRate, MIN_LP_FEE_RATE, MAX_LP_FEE_RATE);
-        i = clampBetween(i, MIN_I, MAX_I);
-        k = clampBetween(k, 0, MAX_K);
-        tokenInAmount = clampBetween(tokenInAmount, 0, IERC20(tokenAddr).balanceOf(address(currentActor)));
-        value = clampBetween(value, 0, currentActor.balance);
+        lpFeeRate = fl.clamp(lpFeeRate, MIN_LP_FEE_RATE, MAX_LP_FEE_RATE);
+        i = fl.clamp(i, MIN_I, MAX_I);
+        k = fl.clamp(k, 0, MAX_K);
+        tokenInAmount = fl.clamp(tokenInAmount, 0, IERC20(tokenAddr).balanceOf(address(currentActor)));
+        value = fl.clamp(value, 0, currentActor.balance);
         return CreatePoolETHParams(tokenAddr, useTokenAsQuote, lpFeeRate, i, k, currentActor, tokenInAmount, value);
     }
 
@@ -274,7 +274,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        sharesIn = clampBetween(sharesIn, 0, MagicLP(lpAddr).balanceOf(address(currentActor)));
+        sharesIn = fl.clamp(sharesIn, 0, MagicLP(lpAddr).balanceOf(address(currentActor)));
 
         return RemoveLiquidityParams(lpAddr, sharesIn, minimumBaseAmount, minimumQuoteAmount);
     }
@@ -290,7 +290,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         address quoteToken = availablePools[address(weth)][lp % availablePools[address(weth)].length];
         address lpAddr = pools[address(weth)][quoteToken];
 
-        sharesIn = clampBetween(sharesIn, 0, MagicLP(lpAddr).balanceOf(address(currentActor)));
+        sharesIn = fl.clamp(sharesIn, 0, MagicLP(lpAddr).balanceOf(address(currentActor)));
 
         return RemoveLiquidityETHParams(lpAddr, sharesIn, minimumETHAmount, minimumTokenAmount);
     }
@@ -304,8 +304,8 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        baseInAmount = clampBetween(baseInAmount, 0, REASONABLE_PREVIEW_AMOUNT);
-        quoteInAmount = clampBetween(quoteInAmount, 0, REASONABLE_PREVIEW_AMOUNT);
+        baseInAmount = fl.clamp(baseInAmount, 0, REASONABLE_PREVIEW_AMOUNT);
+        quoteInAmount = fl.clamp(quoteInAmount, 0, REASONABLE_PREVIEW_AMOUNT);
 
         return PreviewAddLiquidityParams(lpAddr, baseInAmount, quoteInAmount);
     }
@@ -315,7 +315,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        sharesIn = clampBetween(sharesIn, 0, REASONABLE_PREVIEW_AMOUNT);
+        sharesIn = fl.clamp(sharesIn, 0, REASONABLE_PREVIEW_AMOUNT);
 
         return PreviewRemoveLiquidityParams(lpAddr, sharesIn);
     }
@@ -332,7 +332,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         require(MagicLP(lpAddr)._BASE_TOKEN_() == address(weth), "The base token of the pool is not WETH");
 
-        value = clampBetween(value, 0, currentActor.balance);
+        value = fl.clamp(value, 0, currentActor.balance);
 
         return SellBaseETHForTokensParams(lpAddr, minimumOut, value);
     }
@@ -349,7 +349,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         require(MagicLP(lpAddr)._QUOTE_TOKEN_() == address(weth), "The quote token of the pool is not WETH");
 
-        amountIn = clampBetween(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+        amountIn = fl.clamp(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
 
         vm.prank(currentActor);
         IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).approve(address(router), amountIn);
@@ -366,7 +366,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        amountIn = clampBetween(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+        amountIn = fl.clamp(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
 
         vm.prank(currentActor);
         IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).approve(address(router), amountIn);
@@ -386,7 +386,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         require(MagicLP(lpAddr)._QUOTE_TOKEN_() == address(weth), "The base token of the pool is not WETH");
 
-        value = clampBetween(value, 0, currentActor.balance);
+        value = fl.clamp(value, 0, currentActor.balance);
 
         return SellQuoteETHForTokensParams(lpAddr, minimumOut, value);
     }
@@ -403,7 +403,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         require(MagicLP(lpAddr)._BASE_TOKEN_() == address(weth), "The quote token of the pool is not WETH");
 
-        amountIn = clampBetween(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+        amountIn = fl.clamp(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
 
         vm.prank(currentActor);
         IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).approve(address(router), amountIn);
@@ -420,7 +420,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
         address lpAddr = address(allPools[lp % allPools.length]);
 
-        amountIn = clampBetween(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
+        amountIn = fl.clamp(amountIn, 0, IERC20(MagicLP(lpAddr)._BASE_TOKEN_()).balanceOf(address(currentActor)));
 
         vm.prank(currentActor);
         IERC20(MagicLP(lpAddr)._QUOTE_TOKEN_()).approve(address(router), amountIn);
@@ -438,7 +438,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         require(allPools.length > 0, "There are no available pools");
 
         address currentToken = address(weth);
-        pathLength = uint8(clampBetween(pathLength, 1, MAX_PATH_LENGTH));
+        pathLength = uint8(fl.clamp(pathLength, 1, MAX_PATH_LENGTH));
         address[] memory tempPath = new address[](pathLength);
         uint8 constructedPathLength = 0;
 
@@ -462,7 +462,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
             path[i] = tempPath[i];
         }
 
-        value = clampBetween(value, 0, currentActor.balance);
+        value = fl.clamp(value, 0, currentActor.balance);
 
         return SwapETHForTokensParams(path, directions, minimumOut, value);
     }
@@ -479,7 +479,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         require(allPools.length > 0, "There are no available pools");
 
         address currentToken = address(weth);
-        pathLength = uint8(clampBetween(pathLength, 1, MAX_PATH_LENGTH));
+        pathLength = uint8(fl.clamp(pathLength, 1, MAX_PATH_LENGTH));
         address[] memory tempPath = new address[](pathLength);
         uint8 constructedPathLength = 0;
 
@@ -504,10 +504,10 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         }
 
         if (directions & 1 == 0) {
-            amountIn = clampBetween(amountIn, 0, IERC20(IMagicLP(path[0])._BASE_TOKEN_()).balanceOf(address(currentActor)));
+            amountIn = fl.clamp(amountIn, 0, IERC20(IMagicLP(path[0])._BASE_TOKEN_()).balanceOf(address(currentActor)));
             IERC20(IMagicLP(path[0])._BASE_TOKEN_()).approve(path[0], amountIn);
         } else {
-            amountIn = clampBetween(amountIn, 0, IERC20(IMagicLP(path[0])._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
+            amountIn = fl.clamp(amountIn, 0, IERC20(IMagicLP(path[0])._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
             IERC20(IMagicLP(path[0])._QUOTE_TOKEN_()).approve(path[0], amountIn);
         }
 
@@ -525,7 +525,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         require(allPools.length > 0, "There are no available pools");
 
         address currentToken = address(tokens[startingToken % tokens.length]);
-        pathLength = uint8(clampBetween(pathLength, 1, MAX_PATH_LENGTH));
+        pathLength = uint8(fl.clamp(pathLength, 1, MAX_PATH_LENGTH));
         address[] memory tempPath = new address[](pathLength);
         uint8 constructedPathLength = 0;
 
@@ -550,10 +550,10 @@ abstract contract PreconditionsRouter is PreconditionsBase {
         }
 
         if (directions & 1 == 0) {
-            amountIn = clampBetween(amountIn, 0, IERC20(IMagicLP(path[0])._BASE_TOKEN_()).balanceOf(address(currentActor)));
+            amountIn = fl.clamp(amountIn, 0, IERC20(IMagicLP(path[0])._BASE_TOKEN_()).balanceOf(address(currentActor)));
             IERC20(IMagicLP(path[0])._BASE_TOKEN_()).approve(path[0], amountIn);
         } else {
-            amountIn = clampBetween(amountIn, 0, IERC20(IMagicLP(path[0])._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
+            amountIn = fl.clamp(amountIn, 0, IERC20(IMagicLP(path[0])._QUOTE_TOKEN_()).balanceOf(address(currentActor)));
             IERC20(IMagicLP(path[0])._QUOTE_TOKEN_()).approve(path[0], amountIn);
         }
 
@@ -562,7 +562,7 @@ abstract contract PreconditionsRouter is PreconditionsBase {
 
     function fetchPoolForToken(uint8 entropy, address token) internal returns (address) {
         uint8 index = uint8(uint256(keccak256(abi.encode(entropy))));
-        index = uint8(clampBetween(index, 0, availablePools[token].length - 1));
+        index = uint8(fl.clamp(index, 0, availablePools[token].length - 1));
         address quoteToken = availablePools[token][index];
         return pools[token][quoteToken];
     }

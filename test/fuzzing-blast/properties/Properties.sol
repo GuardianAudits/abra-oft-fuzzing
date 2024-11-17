@@ -13,6 +13,6 @@ import "./Properties_SWAP.sol";
  */
 abstract contract Properties is Properties_LIQ, Properties_RES, Properties_POOL, Properties_SWAP {
     function invariant_GENERAL_01(bytes memory returnData) internal {
-        gte(returnData.length, 4, GENERAL_01);
+        fl.gte(returnData.length, 4, GENERAL_01);
     }
 }

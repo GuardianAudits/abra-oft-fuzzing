@@ -11,15 +11,15 @@ import "./PropertiesBase.sol";
 abstract contract Properties_RES is PropertiesBase {
     function invariant_RES_01(address pool) internal {
         if (states[1].poolStates[pool].baseReserve == 0 && states[1].poolStates[pool].quoteReserve == 0) {
-            eq(states[1].poolStates[pool].lpTotalSupply, 0, RES_01);
+            fl.eq(states[1].poolStates[pool].lpTotalSupply, 0, RES_01);
         }
     }
 
     function invariant_RES_02(address pool) internal {
-        lte(states[1].poolStates[pool].baseReserve, states[1].poolStates[pool].baseBalance, RES_02);
+        fl.lte(states[1].poolStates[pool].baseReserve, states[1].poolStates[pool].baseBalance, RES_02);
     }
 
     function invariant_RES_03(address pool) internal {
-        lte(states[1].poolStates[pool].quoteReserve, states[1].poolStates[pool].quoteBalance, RES_03);
+        fl.lte(states[1].poolStates[pool].quoteReserve, states[1].poolStates[pool].quoteBalance, RES_03);
     }
 }

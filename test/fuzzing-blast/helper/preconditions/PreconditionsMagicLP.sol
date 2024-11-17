@@ -72,7 +72,7 @@ abstract contract PreconditionsMagicLP is PreconditionsBase {
 
         address lpAddr = allPools[lp % allPools.length];
 
-        amount = clampBetween(amount, 0, IERC20(lpAddr).balanceOf(address(currentActor)));
+        amount = fl.clamp(amount, 0, IERC20(lpAddr).balanceOf(address(currentActor)));
 
         vm.prank(currentActor);
         IERC20(lpAddr).approve(lpAddr, amount);
@@ -95,7 +95,7 @@ abstract contract PreconditionsMagicLP is PreconditionsBase {
             token = MagicLP(lpAddr)._BASE_TOKEN_();
         }
 
-        amount = clampBetween(amount, 0, IERC20(token).balanceOf(address(currentActor)));
+        amount = fl.clamp(amount, 0, IERC20(token).balanceOf(address(currentActor)));
 
         vm.prank(currentActor);
         IERC20(token).approve(lpAddr, amount);

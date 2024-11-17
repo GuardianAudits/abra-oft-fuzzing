@@ -350,10 +350,10 @@ abstract contract PostconditionsRouter is PostconditionsBase {
             address tokenInAddr;
             if (directions & 1 == 0) {
                 tokenInAddr = IMagicLP(poolsToUpdate[0])._BASE_TOKEN_();
-                log("post token for token swap base", tokenInAddr);
+                fl.log("post token for token swap base", tokenInAddr);
             } else {
                 tokenInAddr = IMagicLP(poolsToUpdate[0])._QUOTE_TOKEN_();
-                log("post token for token swap quote", tokenInAddr);
+                fl.log("post token for token swap quote", tokenInAddr);
             }
             directions >>= poolsToUpdate.length - 1;
 
@@ -361,10 +361,10 @@ abstract contract PostconditionsRouter is PostconditionsBase {
             // Get the token out address
             if (directions & 1 == 0) {
                 tokenOutAddr = IMagicLP(poolsToUpdate[poolsToUpdate.length - 1])._QUOTE_TOKEN_();
-                log("post token for token swap quote out", tokenOutAddr);
+                fl.log("post token for token swap quote out", tokenOutAddr);
             } else {
                 tokenOutAddr = IMagicLP(poolsToUpdate[poolsToUpdate.length - 1])._BASE_TOKEN_();
-                log("post token for token swap base out", tokenOutAddr);
+                fl.log("post token for token swap base out", tokenOutAddr);
             }
 
             invariant_SWAP_01(tokenInAddr, tokenOutAddr, false);

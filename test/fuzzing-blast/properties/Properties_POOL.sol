@@ -16,20 +16,20 @@ abstract contract Properties_POOL is PropertiesBase {
         }
         sum += states[1].poolStates[pool].addressZeroBal;
         sum += states[1].poolStates[pool].poolLpTokenBal;
-        eq(sum, states[1].poolStates[pool].lpTotalSupply, POOL_01);
+        fl.eq(sum, states[1].poolStates[pool].lpTotalSupply, POOL_01);
     }
 
     function invariant_POOL_02() internal {
-        t(false, POOL_02);
+        fl.t(false, POOL_02);
     }
 
     function invariant_POOL_03() internal {
-        t(false, POOL_03);
+        fl.t(false, POOL_03);
     }
 
     function invariant_POOL_04(address pool) internal {
         bool isZero = states[1].poolStates[pool].lpTotalSupply == 0;
         bool gte1001 = states[1].poolStates[pool].lpTotalSupply >= 1001;
-        t(isZero || gte1001, POOL_04);
+        fl.t(isZero || gte1001, POOL_04);
     }
 }

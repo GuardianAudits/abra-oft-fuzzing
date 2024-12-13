@@ -36,13 +36,10 @@ interface ILzBaseOFTV2 is ILzOFTV2 {
 /*** Invariant Tests                                                                                                                ***/
 /***************************************************************************************************************************************
 
-    * OT-01: Total Supply of ORDER should always be 1,000,000,000
+    * ABRA-01: TokenLocker.remainingEpochTime() should never return 0
 
 /**************************************************************************************************************************************/
-/*** OftInvariant configures an OFT system that contains 10 endpoints.                                                             ***/
-/*** The system contains the OrderToken, as well as, its OFT adapter.                                                               ***/
-/*** The rest of the endpoints are connected to OrderOFT Instances.                                                                 ***/
-/*** It also contains global invariants.                                                                                            ***/
+
 /**************************************************************************************************************************************/
 // forgefmt: disable-end
 
@@ -59,6 +56,8 @@ contract OftInvariant is StdInvariant, BaseTest {
     address user4 = vm.addr(uint256(keccak256("User4")));
     address user5 = vm.addr(uint256(keccak256("User5")));
     address[] users = [user0, user1, user2, user3, user4, user5];
+
+    address _feeCollector = 0x60C801e2dfd6298E6080214b3d680C8f8d698F48;
 
     uint256 public constant INIT_MINT = 1_000_000_000 ether;
     uint128 public constant RECEIVE_GAS = 200000;
@@ -84,8 +83,8 @@ contract OftInvariant is StdInvariant, BaseTest {
     mapping(uint16 => ChainTokens) public chainTokens;
     ERC20Mock public rewardToken;
 
-    uint256 constant ARBITRUM_BLOCK = 274770423;
-    uint256 constant MAINNET_BLOCK = 21194005;
+    uint256 constant ARBITRUM_BLOCK = 284378638;
+    uint256 constant MAINNET_BLOCK = 21394693;
 
     uint16 constant ARBITRUM_CHAIN_ID = 110;
     uint16 constant MAINNET_CHAIN_ID = 101;
@@ -120,34 +119,8 @@ contract OftInvariant is StdInvariant, BaseTest {
         _deployInvariantInfra();
     }
 
-    // function invariantOrderTokenBalanceSum() external {
-    //     assertEq(
-    //         token.totalSupply(),
-    //         1_000_000_000 ether,
-    //         "OT-01: Total Supply of ORDER should always be 1,000,000,000"
-    //     );
-    // }
-
-    // function invariantDeployment() public {
-    //     // Test sender deployment on Mainnet
-    //     vm.selectFork(mainnetFork);
-    //     assertEq(address(sender.spellOft()), address(chainTokens[MAINNET_CHAIN_ID].spellOft), "spellOft is not correct on Mainnet");
-    //     assertEq(address(sender.bSpellOft()), address(chainTokens[MAINNET_CHAIN_ID].bSpellOft), "bSpellOft is not correct on Mainnet");
-    //     assertEq(sender.spell(), address(chainTokens[MAINNET_CHAIN_ID].spell), "spell is not correct on Mainnet");
-    //     assertEq(sender.bSpell(), address(chainTokens[MAINNET_CHAIN_ID].bSpell), "bSpellV2 is not correct on Mainnet");
-
-    //     // Test receiver deployment on Arbitrum
-    //     vm.selectFork(arbitrumFork);
-    //     assertEq(address(receiver.spellOft()), address(chainTokens[ARBITRUM_CHAIN_ID].spellOft), "spellOft is not correct on Arbitrum");
-    //     assertEq(address(receiver.bSpellOft()), address(chainTokens[ARBITRUM_CHAIN_ID].bSpellOft), "bSpellOft is not correct on Arbitrum");
-    //     // assertEq(receiver.spell(), address(chainTokens[ARBITRUM_CHAIN_ID].spell), "spell is not correct on Arbitrum");
-    //     assertEq(receiver.bSpell(), address(chainTokens[ARBITRUM_CHAIN_ID].bSpell), "bSpellV2 is not correct on Arbitrum");
-    //     assertEq(address(receiver.spellPowerStaking()), address(spellPowerStaking), "spellPowerStaking is not correct on Arbitrum");
-    //     assertEq(address(receiver.boundSpellLocker()), address(boundSpellLocker), "boundSpellLocker is not correct on Arbitrum");
-    // }
-
-    function invariant_LOCK_01() public useCurrentTimestamp {
-        assertTrue(boundSpellLocker.remainingEpochTime() != 0, "LOCK-01: TockenLocker.remainingEpochTime() should never return 0");
+    function invariant_ABRA_01() public useCurrentTimestamp {
+        assertTrue(boundSpellLocker.remainingEpochTime() != 0, "ABRA-01: TokenLocker.remainingEpochTime() should never return 0");
     }
 
     function _deployCrosschain() internal {
@@ -228,6 +201,14 @@ contract OftInvariant is StdInvariant, BaseTest {
 
         pushPrank(boundSpellLocker.owner());
         OwnableOperators(address(boundSpellLocker)).setOperator(address(receiver), true);
+        popPrank();
+
+        pushPrank(boundSpellLocker.owner());
+        boundSpellLocker.updateInstantRedeemParams(TokenLocker.InstantRedeemParams({
+            immediateBips: 5000, // 50%
+            burnBips: 3000, // 30%
+            feeCollector: _feeCollector
+        }));
         popPrank();
 
         SpellPowerStaking stakingImpl = new SpellPowerStaking(address(chainTokens[ARBITRUM_CHAIN_ID].bSpell), address(0));
@@ -319,5 +300,18 @@ contract OftInvariant is StdInvariant, BaseTest {
             address(boundSpellLocker),
             address(rewardHandler)
         );
+
+        // vm.makePersistent(chainTokens[ARBITRUM_CHAIN_ID].bSpell);
     }
+
+    // function test_replay() public {
+    //     		oftHandler.crosschainStake(307406414609006885633527175614733854842695359425, 25878591444, 93726394784549468535091653246787143254554288979083909856475057499823084319893);
+	// 	oftHandler.stake(13632194113882536253, 121799998696417732767714761, 44520340690498044165308035030360662418306546212692538);
+	// 	oftHandler.exitWithParams(943420856421561644281641025506640604288874815145, 555, 34070586097014564753609089084807184919096992828861620781436242367884987085857);
+	// 	oftHandler.stake(7248027509449896, 1112695491964716378453476805168198301533852542, 71113409940302133929902549389746536044822067719);
+	// 	oftHandler.stake(1756339200, 41561, 230775319050812693881);
+	// 	oftHandler.mint(3988, 1777507200, 1747848147, 1746193139);
+	// 	oftHandler.exit(24420525676089616017078758022729891681842412532109444239765409414727317826714, 1156116546260779444857121643055000358150561648343316302615);
+	// 	oftHandler.redeem(1514559014851704470929455367864016566405788589047723894740667576, 342474070723034788312179947332432518896241929271469880253750463204682035, 1480698605213596653847758308856222803124145521351433859658193309249, 84709971980912880753218324317833319476217702347443670351126017701402668297, 269970718534075160774809194935848);
+    // }
 }

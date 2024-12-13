@@ -18,9 +18,6 @@ import {TimestampStore} from "../stores/TimestampStore.sol";
 import {ILzIndirectOFTV2, ILzOFTV2, ILzApp, ILzReceiver, ILzBaseOFTV2} from "@abracadabra-oftv2/interfaces/ILayerZero.sol";
 import {LzApp} from "@abracadabra-oftv2/LzApp.sol";
 
-/// @dev OftHandler contains functions from the target contracts OrderOFT.sol,
-///      OrderToken.sol, and OrderAdapter.sol.
-///      These functions contain conditional invariants.
 contract OftHandler is Test {
     
     /*//////////////////////////////////////////////////////////////////////////
@@ -46,6 +43,8 @@ contract OftHandler is Test {
     address user4 = vm.addr(uint256(keccak256("User4")));
     address user5 = vm.addr(uint256(keccak256("User5")));
 
+    address feeCollector = 0x60C801e2dfd6298E6080214b3d680C8f8d698F48;
+
     address internal currentActor;
     address internal storageCopySpell;
     address internal storageCopyBSpell;
@@ -60,6 +59,9 @@ contract OftHandler is Test {
 
     uint8 constant PT_SEND = 0;
     uint8 constant PT_SEND_AND_CALL = 1;
+
+    uint256 public constant BIPS = 10000;
+    address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     address[6] users;
 
@@ -153,7 +155,9 @@ contract OftHandler is Test {
         ) public useActor(stakerIndexSeed) adjustTimestamp(timeJumpSeed) {
         
         // PRE-CONDITIONS
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         StakeTemps memory cache;
         cache.stakingToken = ERC20Mock(spellPowerStaking.stakingToken());
@@ -176,19 +180,19 @@ contract OftHandler is Test {
             assertEq(
                 stakingBalanceAfter,
                 stakingBalanceBefore + amount,
-                "CROSS-0: User staking balance on arbitrum should increase by amount"
+                "ABRA-03: User staking balance on arbitrum should increase by amount"
             );
 
             assertNotEq(
                 spellPowerStaking.lastAdded(currentActor),
                 0,
-                "CROSS- 0: User last added time should not be 0"    // @audit fails because stakeFor doesn't update lastAdded
+                "ABRA-04: User last added time should not be 0"
             );
 
             assertEq(
                 spellPowerStakingBalanceAfter,
                 spellPowerStakingBalanceBefore + amount,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-05: bSpell balance of spellPowerStaking should increase by amount"
             );
         } catch {
             assertFalse(false, "STAKE FAILED");
@@ -222,7 +226,9 @@ contract OftHandler is Test {
         ) public useActor(stakerIndexSeed) adjustTimestamp(timeJumpSeed) {
         
         // PRE-CONDITIONS
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         WithdrawTemps memory cache;
         cache.stakingToken = ERC20Mock(spellPowerStaking.stakingToken());
@@ -247,19 +253,19 @@ contract OftHandler is Test {
             assertEq(
                 stakingBalanceAfter,
                 stakingBalanceBefore - amount,
-                "CROSS-0: User staking balance on arbitrum should increase by amount"
+                "ABRA-03: User staking balance on arbitrum should increase by amount"
             );
 
             assertEq(
                 stakingTokenBalanceAfter,
                 stakingTokenBalanceBefore - amount,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-06: bSpell balance of spellPowerStaking should decrease by amount"
             );
 
             assertEq(
                 stakingTokenBalanceAfterUser,
                 stakingTokenBalanceBeforeUser + amount,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-07: bSpell balance of user should increase by amount"
             );
         } catch {
             assertFalse(false, "WITHDRAW FAILED");
@@ -283,7 +289,9 @@ contract OftHandler is Test {
         ) public useActor(stakerIndexSeed) adjustTimestamp(timeJumpSeed) {
         
         // PRE-CONDITIONS
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         ExitTemps memory cache;
         cache.stakingToken = ERC20Mock(spellPowerStaking.stakingToken());
@@ -322,19 +330,19 @@ contract OftHandler is Test {
             assertEq(
                 stakingBalanceAfter,
                 stakingBalanceBefore - cache.amount,
-                "CROSS-0: User staking balance on arbitrum should increase by amount"
+                "ABRA-03: User staking balance on arbitrum should increase by amount"
             );
 
             assertEq(
                 stakingTokenBalanceAfter,
                 stakingTokenBalanceBefore - cache.amount - cache.stakingTokenEarned,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-06: bSpell balance of spellPowerStaking should decrease by amount and earned staking tokens"
             );
 
             assertEq(
                 stakingTokenBalanceAfterUser,
                 stakingTokenBalanceBeforeUser + cache.amount + cache.stakingTokenEarned,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-07: bSpell balance of user should increase by amount and earned staking tokens"
             );
 
             for (uint rewardToken; rewardToken < cache.rewardTokens.length; rewardToken++) {
@@ -343,13 +351,13 @@ contract OftHandler is Test {
                     assertEq(
                         ERC20(cache.rewardTokens[rewardToken]).balanceOf(currentActor),
                         cache.rewardTokenBalanceBefore[rewardToken] + cache.earned[rewardToken] + cache.amount,
-                        "CROSS-0: User should have received earned rewardToken"
+                        "ABRA-08: User should have received earned rewardToken"
                     );
                 } else {
                     assertEq(
                         ERC20(cache.rewardTokens[rewardToken]).balanceOf(currentActor),
                         cache.rewardTokenBalanceBefore[rewardToken] + cache.earned[rewardToken],
-                        "CROSS-0: User should have received earned rewardToken"
+                        "ABRA-08: User should have received earned rewardToken"
                     );
                 }
             }
@@ -361,15 +369,14 @@ contract OftHandler is Test {
             bytes4[1] memory errors =
                 [SafeTransferLib.TransferFailed.selector];
 
-            // bool expected = false;
+            bool expected = false;
             for (uint256 i = 0; i < errors.length; i++) {
                 if (errors[i] == bytes4(err)) {
-                    // expected = true;
-                    // break;
-                    assertTrue(false, "EXIT FAILED");
+                    expected = true;
+                    break;
                 }
             }
-            // assertTrue(expected, "EXIT FAILED");
+            assertTrue(expected, "EXIT FAILED");
         }
     }
 
@@ -399,7 +406,9 @@ contract OftHandler is Test {
         ) public useActor(stakerIndexSeed) adjustTimestamp(timeJumpSeed) {
         
         // PRE-CONDITIONS
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         ExitWithParamsTemps memory cache;
         cache.stakingToken = ERC20Mock(spellPowerStaking.stakingToken());
@@ -441,6 +450,7 @@ contract OftHandler is Test {
 
         cache.rewardParams = RewardHandlerParams({
             data: abi.encode(cache.params),
+            refundTo: currentActor,
             value: value
         });
 
@@ -472,7 +482,7 @@ contract OftHandler is Test {
         }
 
         // ACTION
-        try spellPowerStaking.exit{value: value}(cache.rewardParams) {
+        try spellPowerStaking.exit{value: value}(currentActor, cache.rewardParams) {
 
             // POST-CONDITIONS
             uint256 stakingBalanceAfter = spellPowerStaking.balanceOf(currentActor);
@@ -482,19 +492,19 @@ contract OftHandler is Test {
             assertEq(
                 stakingBalanceAfter,
                 stakingBalanceBefore - cache.amount,
-                "CROSS-0: User staking balance on arbitrum should increase by amount"
+                "ABRA-03: User staking balance on arbitrum should increase by amount"
             );
 
             assertEq(
                 stakingTokenBalanceAfter,
                 stakingTokenBalanceBefore - cache.amount - cache.stakingTokenEarned,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-06: bSpell balance of spellPowerStaking should decrease by amount and earned staking tokens"
             );
 
             assertEq(
                 stakingTokenBalanceAfterUser,
                 stakingTokenBalanceBeforeUser + cache.amount,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-07: bSpell balance of user should increase by amount"
             );
 
             for (uint rewardToken; rewardToken < cache.rewardTokens.length; rewardToken++) {
@@ -502,19 +512,19 @@ contract OftHandler is Test {
                     assertEq(
                         ERC20(cache.rewardTokens[rewardToken]).balanceOf(address(receiver.bSpellOft())),
                         cache.rewardTokenBalanceBefore[rewardToken] + uint256(_ld2sd(cache.earned[rewardToken], address(receiver.bSpellOft()))) * 10e9,
-                        "CROSS-0: User should have received earned rewardToken"
+                        "ABRA-08: User should have received earned rewardToken"
                     );     
                 } else if (cache.rewardTokens[rewardToken] == ILzBaseOFTV2(address(receiver.spellOft())).innerToken()) {
                     assertEq(
                         ERC20(cache.rewardTokens[rewardToken]).balanceOf(address(receiver.spellOft())),
                         0,
-                        "CROSS-0: User should have received earned rewardToken"
+                        "ABRA-08: User should have received earned rewardToken"
                     ); 
                 } else {
                     assertEq(
                         ERC20(cache.rewardTokens[rewardToken]).balanceOf(address(currentActor)),
                         cache.rewardTokenBalanceBefore[rewardToken] + cache.earned[rewardToken],
-                        "CROSS-0: User should have received earned rewardToken"
+                        "ABRA-08: User should have received earned rewardToken"
                     );            
                 }
             }
@@ -556,7 +566,9 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(mainnetFork);
+        if (vm.activeFork() != mainnetFork) {
+            vm.selectFork(mainnetFork);
+        }
 
         CrosschainStakeTemps memory cache;
         cache.action = CrosschainActions.STAKE_BOUNDSPELL;
@@ -584,7 +596,7 @@ contract OftHandler is Test {
             assertEq(
                 bSpellBalanceAfter,
                 bSpellBalanceBefore - amount,
-                "ABRA-0: Mainnet bSpell user balance should decrease by amount"
+                "ABRA-09: Mainnet bSpell user balance should decrease by amount"
             );
 
             vm.stopPrank();
@@ -616,19 +628,19 @@ contract OftHandler is Test {
             assertEq(
                 stakingBalanceAfter,
                 stakingBalanceBefore + amount,
-                "CROSS-0: User staking balance on arbitrum should increase by amount"
+                "ABRA-03: User staking balance on arbitrum should increase by amount"
             );
 
-            // assertNotEq(
-            //     spellPowerStaking.lastAdded(currentActor),
-            //     0,
-            //     "CROSS- 0: User last added time should not be 0"    // @audit fails because stakeFor doesn't update lastAdded
-            // );
+            assertNotEq(
+                spellPowerStaking.lastAdded(currentActor),
+                0,
+                "ABRA-04: User last added time should not be 0"
+            );
 
             assertEq(
                 spellPowerStakingBalanceAfter,
                 spellPowerStakingBalanceBefore + amount,
-                "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                "ABRA-05: bSpell balance of spellPowerStaking should increase by amount"
             );
         } catch {
             assertTrue(false, "CROSSCHAIN STAKE FAILED");
@@ -652,7 +664,9 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(mainnetFork);
+        if (vm.activeFork() != mainnetFork) {
+            vm.selectFork(mainnetFork);
+        }
 
         CrosschainMintAndStakeTemps memory cache;
         cache.action = CrosschainActions.MINT_AND_STAKE_BOUNDSPELL;
@@ -680,7 +694,7 @@ contract OftHandler is Test {
             assertEq(
                 spellBalanceAfter,
                 spellBalanceBefore - amount,
-                "ABRA-0: Mainnet bSpell user balance should decrease by amount"
+                "ABRA-09: Mainnet bSpell user balance should decrease by amount"
             );
 
             vm.stopPrank();
@@ -697,7 +711,7 @@ contract OftHandler is Test {
 
             vm.startPrank(cache.spellOftMainnet);
 
-            bytes memory params = abi.encode(MintBoundSpellAndStakeParams(currentActor, RewardHandlerParams("", 0)));
+            bytes memory params = abi.encode(MintBoundSpellAndStakeParams(currentActor));
             bytes memory payload = abi.encode(Payload(cache.action, params));
 
             // Simulate receiving bSpell on the receiver, not the oft, the inner token
@@ -716,22 +730,22 @@ contract OftHandler is Test {
                 assertEq(
                     stakingBalanceAfter,
                     stakingBalanceBefore + amount,
-                    "CROSS-0: User staking balance on arbitrum should increase by amount"
+                    "ABRA-03: User staking balance on arbitrum should increase by amount"
                 );
 
-                // assertNotEq(
-                //     spellPowerStaking.lastAdded(currentActor),
-                //     0,
-                //     "CROSS- 0: User last added time should not be 0"    // @audit fails because stakeFor doesn't update lastAdded
-                // );
+                assertNotEq(
+                    spellPowerStaking.lastAdded(currentActor),
+                    0,
+                    "ABRA-04: User last added time should not be 0"
+                );
 
                 assertEq(
                     spellPowerStakingBalanceAfter,
                     spellPowerStakingBalanceBefore + amount,
-                    "CROSS-0: bSpell balance of spellPowerStaking should increase by amount"
+                    "ABRA-05: bSpell balance of spellPowerStaking should increase by amount"
                 );
 
-                invariant_LOCK_02(currentActor);
+                invariant_ABRA_02(currentActor);
 
             } catch (bytes memory err) {
 
@@ -772,7 +786,9 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         MintTemps memory cache;
         cache.receiver = randomAddress(receiverIndexSeed);
@@ -799,22 +815,22 @@ contract OftHandler is Test {
             assertEq(
                 underlyingBalanceAfter,
                 underlyingBalanceBefore - amount,
-                "ABRA-0: Sender underlying balance should decrease when minting bSpell"
+                "ABRA-10: Sender underlying balance should decrease when minting bSpell"
             );
 
             assertEq(
                 assetBalanceAfter,
                 assetBalanceBefore + amount,
-                "ABRA-0: Receiver asset balance should increase when minting bSpell"
+                "ABRA-11: Receiver asset balance should increase when minting bSpell"
             );
 
             assertEq(
                 totalSupplyAfter,
                 totalSupplyBefore + amount,
-                "ABRA-0: Total supply of asset should increase when minting bSpell"
+                "ABRA-12: Total supply of asset should increase when minting bSpell"
             );
 
-            invariant_LOCK_02(currentActor);
+            invariant_ABRA_02(currentActor);
 
         } catch (bytes memory err) {
 
@@ -839,6 +855,15 @@ contract OftHandler is Test {
         uint256 actorbSpellBalance;
     }
 
+    struct RedeemBeforeAfter {
+        uint256 totalSupply;
+        uint256 senderAssetBalance;
+        uint256 receiverUnderlyingBalance;
+        uint256 lockerAssetBalance;
+        uint256 feeCollectorAssetBalance;
+        uint256 claimable;
+    }
+
     function redeem(
         uint256 actorIndexSeed,
         uint256 receiverIndexSeed,
@@ -849,49 +874,71 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         RedeemTemps memory cache;
         cache.receiver = randomAddress(receiverIndexSeed);
         cache.underlyingToken = boundSpellLocker.underlyingToken();
         cache.asset = boundSpellLocker.asset();
-        cache.actorbSpellBalance = ERC20Mock(cache.asset).balanceOf(currentActor);
+        cache.actorbSpellBalance = ERC20(cache.asset).balanceOf(currentActor);
 
         if (cache.actorbSpellBalance == 0) return;
 
         amount = bound(amount, 1, cache.actorbSpellBalance);
         lockingDeadline = bound(lockingDeadline, block.timestamp, block.timestamp + 5 days);
 
-        ERC20Mock(cache.asset).approve(address(boundSpellLocker), amount);
+        ERC20(cache.asset).approve(address(boundSpellLocker), amount);
 
-        uint256 totalSupplyBefore = ERC20(cache.asset).totalSupply();
-        uint256 receiverUnderlyingBalanceBefore = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
-        uint256 claimable = boundSpellLocker.claimable(currentActor);
+        RedeemBeforeAfter memory _before;
+        _before.totalSupply = ERC20(cache.asset).totalSupply();
+        amount = amount > _before.totalSupply ? bound(amount, 1, _before.totalSupply) : amount;
+
+        _before.senderAssetBalance = ERC20(cache.asset).balanceOf(currentActor);
+        _before.receiverUnderlyingBalance = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
+        _before.lockerAssetBalance = ERC20(cache.asset).balanceOf(address(boundSpellLocker));
+        _before.feeCollectorAssetBalance = ERC20(cache.asset).balanceOf(feeCollector);
+        _before.claimable = boundSpellLocker.claimable(currentActor);
 
         // ACTION
-        try boundSpellLocker.redeem(amount, cache.receiver, lockingDeadline) returns (uint256 amountClaimed) {
+        try boundSpellLocker.redeem(amount, cache.receiver, lockingDeadline) {
 
             // POST-CONDITIONS
-            uint256 totalSupplyAfter = ERC20(cache.asset).totalSupply();
-            uint256 receiverUnderlyingBalanceAfter = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
+            RedeemBeforeAfter memory _after;
+            _after.totalSupply = ERC20(cache.asset).totalSupply();
+            _after.senderAssetBalance = ERC20(cache.asset).balanceOf(currentActor);
+            _after.receiverUnderlyingBalance = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
+            _after.lockerAssetBalance = ERC20(cache.asset).balanceOf(address(boundSpellLocker));
+            _after.feeCollectorAssetBalance = ERC20(cache.asset).balanceOf(feeCollector);
 
-            emit DebugUint("My amount", amount);
-            emit DebugUint("amount returned", amountClaimed);
             assertEq(
-                totalSupplyAfter,
-                totalSupplyBefore - amount,
-                "ABRA-0: Total supply of asset should decrease when redeeming bSpell"
+                _after.totalSupply,
+                _before.totalSupply - amount,
+                "ABRA-13: Total supply of asset should decrease when redeeming bSpell"
             );
 
-            if (claimable > 0) {
+            // Check that bSpell tokens were transferred from Alice
+            assertEq(
+                _after.senderAssetBalance, 
+                _before.senderAssetBalance - amount, 
+                "ABRA-14: Sender bSpell balance should decrease when redeeming"
+                );
+            assertEq(
+                _after.lockerAssetBalance,
+                0, 
+                "ABRA-15: Locker should not hold any bSpell"
+                );
+
+            if (_before.claimable > 0) {
                 assertEq(
-                    receiverUnderlyingBalanceAfter,
-                    receiverUnderlyingBalanceBefore + claimable,
-                    "ABRA-0: Receiver underlying balance should increase by claimable when redeeming bSpell"
+                    _after.receiverUnderlyingBalance,
+                    _before.receiverUnderlyingBalance + _before.claimable,
+                    "ABRA-16: Receiver underlying balance should increase by claimable when redeeming bSpell"
                 );
             }
 
-            invariant_LOCK_02(currentActor);
+            invariant_ABRA_02(currentActor);
 
         } catch (bytes memory err) {
 
@@ -927,7 +974,9 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         InstantRedeemTemps memory cache;
         cache.receiver = randomAddress(receiverIndexSeed);
@@ -941,11 +990,59 @@ contract OftHandler is Test {
 
         ERC20Mock(cache.asset).approve(address(boundSpellLocker), amount);
 
+        RedeemBeforeAfter memory _before;
+        _before.totalSupply = ERC20(cache.asset).totalSupply();
+        amount = amount > _before.totalSupply ? bound(amount, 1, _before.totalSupply) : amount;
+
+        _before.senderAssetBalance = ERC20(cache.asset).balanceOf(currentActor);
+        _before.receiverUnderlyingBalance = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
+        _before.lockerAssetBalance = ERC20(cache.asset).balanceOf(address(boundSpellLocker));
+        _before.feeCollectorAssetBalance = ERC20(cache.asset).balanceOf(feeCollector);
+        _before.claimable = boundSpellLocker.claimable(currentActor);
+
         // ACTION
         try boundSpellLocker.instantRedeem(amount, cache.receiver) {
 
             // POST-CONDITIONS
-            invariant_LOCK_02(currentActor);
+            RedeemBeforeAfter memory _after;
+            _after.totalSupply = ERC20(cache.asset).totalSupply();
+            _after.senderAssetBalance = ERC20(cache.asset).balanceOf(currentActor);
+            _after.receiverUnderlyingBalance = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
+            _after.lockerAssetBalance = ERC20(cache.asset).balanceOf(address(boundSpellLocker));
+            _after.feeCollectorAssetBalance = ERC20(cache.asset).balanceOf(feeCollector);
+
+            (uint256 immediateBips, uint256 burnBips, ) = boundSpellLocker.instantRedeemParams();
+            uint256 immediateAmount = (amount * immediateBips) / BIPS;
+            uint256 burnAmount = (amount * burnBips) / BIPS;
+            uint256 fees = amount - immediateAmount - burnAmount;
+
+            assertEq(
+                _after.totalSupply,
+                _before.totalSupply + fees - amount,
+                "ABRA-17: Total supply of asset should increase by the difference between fees and amount when instantRedeeming bSpell"
+            );
+            assertEq(
+                _after.senderAssetBalance, 
+                _before.senderAssetBalance - amount, 
+                "ABRA-14: Sender bSpell balance should decrease when redeeming"
+                );
+            assertEq(
+                _after.lockerAssetBalance,
+                0, 
+                "ABRA-15: Locker should not hold any bSpell"
+                );
+            assertEq(
+                _after.receiverUnderlyingBalance, 
+                _before.receiverUnderlyingBalance + immediateAmount + _before.claimable, 
+                "ABRA-18: Receiver underlying balance should increase by immediateAmount and claimable when instantRedeeming bSpell"
+                );
+            assertEq(
+                _after.feeCollectorAssetBalance, 
+                _before.feeCollectorAssetBalance + fees, 
+                "ABRA-19: FeeCollector balance of bSpell should increase by feeAmount when instantRedeeming"
+                );
+
+            invariant_ABRA_02(currentActor);
 
         } catch (bytes memory err) {
 
@@ -980,19 +1077,31 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         ClaimTemps memory cache;
         cache.underlyingToken = boundSpellLocker.underlyingToken();
         cache.asset = boundSpellLocker.asset();
 
-        if (boundSpellLocker.claimable(currentActor) == 0) return;
+        uint256 claimable = boundSpellLocker.claimable(currentActor);
+        if (claimable == 0) return;
+        uint256 receiverSpellBalanceBefore = ERC20(cache.underlyingToken).balanceOf(currentActor);
 
         // ACTION
         try boundSpellLocker.claim() {
 
             // POST-CONDITIONS
-            invariant_LOCK_02(currentActor);
+
+            uint256 receiverSpellBalanceAfter = ERC20(cache.underlyingToken).balanceOf(currentActor);
+
+            assertEq(
+                receiverSpellBalanceAfter,
+                receiverSpellBalanceBefore + claimable,
+                "ABRA-20: User should have received claimable tokens when calling claim"
+            );
+            invariant_ABRA_02(currentActor);
 
         } catch (bytes memory err) {
 
@@ -1026,20 +1135,33 @@ contract OftHandler is Test {
 
         // PRE-CONDITIONS
 
-        vm.selectFork(arbitrumFork);
+        if (vm.activeFork() != arbitrumFork) {
+            vm.selectFork(arbitrumFork);
+        }
 
         ClaimToTemps memory cache;
         cache.receiver = randomAddress(receiverIndexSeed);
         cache.underlyingToken = boundSpellLocker.underlyingToken();
         cache.asset = boundSpellLocker.asset();
 
-        if (boundSpellLocker.claimable(currentActor) == 0) return;
+        uint256 claimable = boundSpellLocker.claimable(currentActor);
+        if (claimable == 0) return;
+        uint256 receiverSpellBalanceBefore = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
 
         // ACTION
         try boundSpellLocker.claim(cache.receiver) {
 
             // POST-CONDITIONS
-            invariant_LOCK_02(currentActor);
+
+            uint256 receiverSpellBalanceAfter = ERC20(cache.underlyingToken).balanceOf(cache.receiver);
+
+            assertEq(
+                receiverSpellBalanceAfter,
+                receiverSpellBalanceBefore + claimable,
+                "ABRA-21: Receiver should have received claimable tokens when calling claimTo"
+            );
+
+            invariant_ABRA_02(currentActor);
 
         } catch (bytes memory err) {
 
@@ -1063,7 +1185,7 @@ contract OftHandler is Test {
                                      INVARIANTS
     //////////////////////////////////////////////////////////////////////////*/
 
-    function invariant_LOCK_02(address user) internal view {
+    function invariant_ABRA_02(address user) internal view {
 
         TokenLocker.LockedBalance[] memory userLocks = boundSpellLocker.userLocks(user);
 
@@ -1083,7 +1205,7 @@ contract OftHandler is Test {
         assertEq(
             userLocks[latestUnlockIndex].amount,
             userLocks[boundSpellLocker.lastLockIndex(user)].amount,
-            "LOCK-02: lastLockIndex for the user always corresponds to the lock with the latest unlock time or there are no locks & the lastLockIndex is nonzero"
+            "ABRA-02: lastLockIndex for the user always corresponds to the lock with the latest unlock time or there are no locks & the lastLockIndex is nonzero"
         );
     }
 

@@ -1,42 +1,119 @@
-## Orderly Fuzz Suite
+# Overview
 
-### Overview
+Abracadabra engaged Guardian Audits for an in-depth security review of their OFT Staking Contracts. This comprehensive evaluation, conducted from Nov 12th to Nov 18th, 2024, included the development of a specialized fuzzing suite to uncover complex logical errors in various protocol states. This suite, an integral part of the audit, was created during the review period and successfully delivered upon the audit's conclusion.
 
-This fuzzing suite consists of a contract that define different setUp parameters:
-* OrderInvariant.t.sol
+# Contents
 
-OrderInvariant configures an OFT system that contains 10 endpoints.
-The system contains the OrderToken, as well as, its OFT adapter. 
-The rest of the endpoints are connected to OrderOFT Instances.
+This fuzzing suite was created for the scope below, and updated for remediations at `147db99b584c45bb7e80fad3e785f4faec7d8171`. The fuzzing suite primarily targets the core functionality found in `BoundSpellStakingActions.sol`, `SpellPowerStaking.sol`, `TokenLocker.sol`, and `MultiRewardsClaimingHandler.sol`.
 
-All of the invariants reside in the following contracts:
-* OrderHandler.sol
-* BaseInvariant.t.sol
+### Testing Methodology
 
-With OrderHandler.sol containing conditional invariants and BaseInvariant containing global invariants.
+The testing architecture leverages mainnet forking to maintain protocol-accurate parameters and state conditions. This approach allows for:
 
-The Suite also contains a contract to assist in verification methods: VerifyHelper.sol
+- Real-world state validation
+- Production-equivalent parameter testing
+- Accurate simulation of complex DeFi interactions
 
-To run invariant tests:
-```shell
-forge test
+All properties tested can be found below in this readme.
+
+## NOTE ABOUT SOURCE CODE
+
+Due to the issue of `_getRewardsFor DOS` the recommended fix was added to allow for further coverage of the codebase
+
+`MultiRewardsClaimingHandler.sol::notifyRewards`
+```diff
+function notifyRewards(
+        address _to,
+        address _refundTo,
+        TokenAmount[] memory _rewards,
+        bytes memory _data
+    ) external payable onlyOperators {
+        MultiRewardsClaimingHandlerParam[] memory _params = abi.decode(_data, (MultiRewardsClaimingHandlerParam[]));
+
+        if (_params.length != _rewards.length) {
+            revert ErrInvalidParams();
+        }
+
+        for (uint256 i = 0; i < _rewards.length; i++) {
+            address token = _rewards[i].token;
+            uint256 amount = _rewards[i].amount;
+            ILzOFTV2 oft = tokenOfts[token];
+            MultiRewardsClaimingHandlerParam memory param = _params[i];
+
++            if (amount == 0) continue;
+
+            // local reward claiming when the destination is the local chain
+            if (param.dstChainId == LOCAL_CHAIN_ID) {
+                token.safeTransfer(_to, amount);
+                continue;
+            }
+
+            if (param.fee > address(this).balance) {
+                revert ErrNotEnoughNativeTokenToCoverFee();
+            }
+
+            ILzCommonOFT.LzCallParams memory lzCallParams = ILzCommonOFT.LzCallParams({
+                refundAddress: payable(_refundTo),
+                zroPaymentAddress: address(0),
+                adapterParams: abi.encodePacked(MESSAGE_VERSION, uint256(param.gas))
+            });
+
+            oft.sendFrom{value: param.fee}(
+                address(this), // 'from' address to send tokens
+                param.dstChainId, // remote LayerZero chainId
+                bytes32(uint256(uint160(address(_to)))), // recipient address
+                amount, // amount of tokens to send (in wei)
+                lzCallParams
+            );
+        }
+    }
 ```
 
-### Invariants
-| **Invariant ID** | **Invariant Description** | **Passed** | **Run Count** |
-|:--------------:|:-----|:-----------:|:-----------:|
-| **OT-01** | Total Supply of ORDER should always be 1,000,000,000 | PASS | 1,000,000+
-| **OT-02** | Allowance Matches Approved Amount | PASS | 1,000,000+
-| **OT-03** | ERC20 Balance Changes By Amount For Sender And Receiver Upon Transfer | PASS | 1,000,000+
-| **OT-04** | ERC20 Balance Remains The Same Upon Self-Transfer | PASS | 1,000,000+
-| **OT-05** | ERC20 Total Supply Remains The Same Upon Transfer | PASS | 1,000,000+
-| **OT-06** | Source Token Balance Should Decrease On Send | PASS | 1,000,000+
-| **OT-07** | Adapter Balance Should Increase On Send | PASS | 1,000,000+
-| **OT-08** | Native Token Total Supply Should Not Change On Send | PASS | 1,000,000+
-| **OT-09** | Source OFT Total Supply Should Decrease On Send | PASS | 1,000,000+
-| **OT-10** | Outbound Nonce Should Increase By 1 On Send | PASS | 1,000,000+
-| **OT-11** | Max Received Nonce Should Increase By 1 on lzReceive | PASS | 1,000,000+
-| **OT-12** | Destination Token Balance Should Increase on lzReceive | PASS | 1,000,000+
-| **OT-13** | Adapter Balance Should Decrease on lzReceive | PASS | 1,000,000+
-| **OT-14** | Native Token Total Supply Should Not Change on lzReceive | PASS | 1,000,000+
-| **OT-15** | Destination Total Supply Should Increase on lzReceive | PASS | 1,000,000+
+## Setup
+
+1. Install libs
+
+```sh
+bun install / yarn install
+```
+
+Make a copy of `.env.defaults` to `.env` and set the desired parameters. This file is git ignored.
+
+## Usage 
+
+2. Run Foundry
+`forge test --match-contract OftInvariant -vvvvv --show-progress`
+
+# Scope
+
+Repo: https://github.com/GuardianAudits/abra-oft-fuzzing
+
+
+Branch: `abra-suite`
+
+Commit: `1e8b997f6187d87e104a33a4f161fd7f6120d385`
+
+#List of assertions
+| Invariant ID | Invariant Description                                                                                 | Passed | Remediations | Run Count |
+| ------------ | ----------------------------------------------------------------------------------------------------- | ------ | ------------ | --------- |
+| ABRA-01    | TokenLocker.remainingEpochTime() should never return 0                          | ✅     |    ✅       | 10m       |
+| ABRA-02    | lastLockIndex for the user always corresponds to the lock with the latest unlock time or there are no locks & the lastLockIndex is nonzero          | ✅     |    ✅      | 10m       |
+| ABRA-03    | User staking balance on arbitrum should increase by amount                      | ✅     |      ✅      | 10m       |
+| ABRA-04    | User last added time should not be 0        | ❌     |     ✅       | 10m       |
+| ABRA-05     | bSpell balance of spellPowerStaking should increase by amount                              | ✅     |     ✅       | 10m       |
+| ABRA-06     | bSpell balance of spellPowerStaking should decrease by amount                                                   | ✅     |     ✅       | 10m       |
+| ABRA-07     | bSpell balance of user should increase by amount                                                 | ✅     |      ✅      | 10m       |
+| ABRA-08     | User should have received earned rewardToken                                                 | ✅     |     ✅       | 10m       |
+| ABRA-09     | Mainnet bSpell user balance should decrease by amount                                                 | ✅     |     ✅       | 10m       |
+| ABRA-10     | Sender underlying balance should decrease when minting bSpell                                                 | ✅     |     ✅       | 10m       |
+| ABRA-11     | Receiver asset balance should increase when minting bSpell                                                 | ✅     |      ✅      | 10m       |
+| ABRA-12     | Total supply of asset should increase when minting bSpell                                                | ✅     |      ✅      | 10m       |
+| ABRA-13     | Total supply of asset should decrease when redeeming bSpell                                                 | ✅     |      ✅      | 10m       |
+| ABRA-14     | Sender bSpell balance should decrease when redeeming                                                 | ✅     |      ✅      | 10m       |
+| ABRA-15    | Locker should not hold any bSpell                                | ✅     |      ✅      | 10m       |
+| ABRA-16    | Receiver underlying balance should increase by claimable when redeeming bSpell                                                   | ✅     |      ✅      | 10m       |
+| ABRA-17    | Total supply of asset should increase by the difference between fees and amount when instantRedeeming bSpell | ✅     |      ✅      | 10m       |
+| ABRA-18    | Receiver underlying balance should increase by immediateAmount and claimable when instantRedeeming bSpell | ✅     |     ✅       | 10m       |
+| ABRA-19    | FeeCollector balance of bSpell should increase by feeAmount when instantRedeeming | ✅     |     ✅       | 10m       |
+| ABRA-20    | User should have received claimable tokens when calling claim | ✅     |     ✅       | 10m       |
+| ABRA-21    | Receiver should have received claimable tokens when calling claimTo | ✅     |     ✅       | 10m       |

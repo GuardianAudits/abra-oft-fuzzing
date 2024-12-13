@@ -78,7 +78,6 @@ recursive_deps = false
 "solady" = { version = "0.0.281", git = "https://github.com/Vectorized/solady.git", rev = "513f581675374706dbe947284d6b12d19ce35a2a" }
 "ExcessivelySafeCall" = { version = "0.0.1", git = "https://github.com/nomad-xyz/ExcessivelySafeCall.git", rev = "5982c8ea02b84988220de7343e43ebb801069d08" }
 "safe-contracts" = { version = "1.3.0", git = "https://github.com/safe-global/safe-smart-account.git", rev = "186a21a74b327f17fc41217a927dea7064f74604" }
-"fuzzlib" = { version = "0.3.1", git = "https://github.com/perimetersec/fuzzlib.git", rev = "8116ad7ed50c41d0a40d2475c93c98f3653fa8fd" }
 "abracadabra-oftv2" = { version = "0.0.1", git = "https://github.com/Abracadabra-money/abracadabra-oftv2-contracts.git", rev = "4b56ba05cf081bfb1796d1a68fcfe6cf5997551f" }
 halmos-cheatcodes = { version = "3ca0e11", git = "https://github.com/a16z/halmos-cheatcodes.git", rev = "3ca0e11cf6ea5b3f73997a44932ab9c048c5ed57" }
 

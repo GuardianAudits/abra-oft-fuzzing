@@ -78,6 +78,9 @@ contract MultiRewardsClaimingHandler is IRewardHandler, OwnableOperators {
             ILzOFTV2 oft = tokenOfts[token];
             MultiRewardsClaimingHandlerParam memory param = _params[i];
 
+            // @audit ADDED BY FUZZER
+            if (amount == 0) continue;
+
             // local reward claiming when the destination is the local chain
             if (param.dstChainId == LOCAL_CHAIN_ID) {
                 token.safeTransfer(_to, amount);

@@ -39,7 +39,7 @@ interface ILzBaseOFTV2 is ILzOFTV2 {
     * OT-01: Total Supply of ORDER should always be 1,000,000,000
 
 /**************************************************************************************************************************************/
-/*** OrderInvariant configures an OFT system that contains 10 endpoints.                                                             ***/
+/*** OftInvariant configures an OFT system that contains 10 endpoints.                                                             ***/
 /*** The system contains the OrderToken, as well as, its OFT adapter.                                                               ***/
 /*** The rest of the endpoints are connected to OrderOFT Instances.                                                                 ***/
 /*** It also contains global invariants.                                                                                            ***/
@@ -107,13 +107,13 @@ contract OftInvariant is StdInvariant, BaseTest {
         _;
     }
 
+    event Debug(string a, uint256 b);
+
     /*//////////////////////////////////////////////////////////////////////////
                                     SET-UP FUNCTION
     //////////////////////////////////////////////////////////////////////////*/
 
     function setUp() public override {
-
-        timestampStore = new TimestampStore();
 
         _deployCrosschain();
         _deployRewards();
@@ -157,6 +157,11 @@ contract OftInvariant is StdInvariant, BaseTest {
 
         // Start with Mainnet fork for sender setup
         vm.selectFork(mainnetFork);
+
+        timestampStore = new TimestampStore();
+        emit Debug("Timestampstore", timestampStore.currentTimestamp());
+
+        vm.makePersistent(address(timestampStore));
 
         vm.deal(address(this), 1000000 ether);
         vm.deal(user0, 1000 ether);
@@ -300,16 +305,19 @@ contract OftInvariant is StdInvariant, BaseTest {
         chainTokens[ARBITRUM_CHAIN_ID].bSpell.safeApprove(address(spellPowerStaking), amount);
         spellPowerStaking.notifyRewardAmount(chainTokens[ARBITRUM_CHAIN_ID].bSpell, amount);
         vm.stopPrank();
-    }
 
-    function test_replay() public {
-        oftHandler.claimTo(75, 13203, 115649085855878259793443311310615732766801325814069989915415518942488815740417);
-		oftHandler.stake(714861998183228214295987959683312807843088328711134822954551982066110, 5542043178997083418014488669010019263402384, 47392582896055055094901266651521);
-		oftHandler.instantRedeem(17474, 85255390875014325802867460126659607941379558699672153012307716606304121007420, 303504771, 26226014234867040999354588416062413061921410486599689515926489912543789506822);
-		oftHandler.withdraw(5578524543151492, 361991270800502315716410528308914543267278857722739109385787038, 564373594710842940314988871769564250166611560694190704871914001991942);
-		oftHandler.claimTo(26226014234867040999354588416062413061921410486599689515926489912543789506822, 26226014234867040999354588416062413061921410486599689515926489912543789506822, 26226014234867040999354588416062413061921410486599689515926489912543789506822);
-		oftHandler.crosschainMintAndStake(217730071357428376392401917610304260432449400358368857, 403318235916170676690405159511591356810988784285857260752269440743270, 133525944030036526803086731987947446429756577043858770234899818792522);
-		oftHandler.exitWithParams(1, 112919267058104811457579738224275126900689479614739898903058069576379770860369, 1560440824710236932659882462923085838);
-		oftHandler.stake(6798, 26226014234867040999354588416062413061921410486599689515926489912543789506822, 26226014234867040999354588416062413061921410486599689515926489912543789506822);
+        emit Debug("timestamp1", block.timestamp);
+
+        address[] memory persistentContracts = new address[](4);
+        persistentContracts[0] = address(spellPowerStaking);
+        persistentContracts[0] = address(boundSpellLocker);
+        persistentContracts[0] = address(rewardHandler);
+        persistentContracts[0] = address(timestampStore);
+
+        vm.makePersistent(
+            address(spellPowerStaking),
+            address(boundSpellLocker),
+            address(rewardHandler)
+        );
     }
 }
